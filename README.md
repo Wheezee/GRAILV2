@@ -16,7 +16,7 @@ GRAIL is a smart grading system designed to help educators identify and support 
 
 ---
 
-## Core Machine Learning Features
+## Core Machine Learning Features (Holup, still cooking)
 
 - `avg_score_pct` – average performance across all assessments
 - `variation_score_pct` – consistency in scores
