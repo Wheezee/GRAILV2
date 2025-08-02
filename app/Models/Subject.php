@@ -48,4 +48,9 @@ class Subject extends Model
     {
         return $this->hasMany(ClassSection::class);
     }
+
+    public function classes()
+    {
+        return $this->classSections();
+    }
 } 

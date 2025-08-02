@@ -65,39 +65,73 @@ Route::post('/register', function (Request $request) {
 // Dashboard (protected)
 Route::get('/dashboard', function () {
     $user = auth()->user();
-    
+    if ($user->isAdmin()) {
+        return view('admin.dashboard');
+    }
     if ($user->isTeacher()) {
-        // Simple placeholder data
-        $totalStudents = 0;
-        $totalSubjects = 0;
-        $totalClassSections = 0;
-        $totalUpcoming = 0;
-        $totalGraded = 0;
-        $totalPending = 0;
-        
-        // Empty arrays for latest items
-        $latestActivities = [];
-        $latestQuizzes = [];
-        $latestExams = [];
-        $latestRecitations = [];
-        $latestProjects = [];
+        $subjects = $user->subjects()->with(['assessmentTypes.assessments'])->get();
+        $subjectIds = $subjects->pluck('id');
 
-        return view('dashboard', compact(
+        // Gather stats
+        $totalStudents = \App\Models\Student::whereHas('classSections', function($q) use ($subjectIds) {
+            $q->whereIn('subject_id', $subjectIds);
+        })->distinct('id')->count('id');
+        $totalSubjects = $subjects->count();
+        $totalClassSections = \App\Models\ClassSection::whereIn('subject_id', $subjectIds)->count();
+
+        // Group by assessment type
+        $assessmentTypeStats = [];
+        $assessmentTypes = \App\Models\AssessmentType::whereIn('subject_id', $subjectIds)->get();
+        foreach ($assessmentTypes as $type) {
+            $assessments = $type->assessments()->orderByDesc('created_at')->get();
+            $assessmentTypeStats[$type->name] = [
+                'total' => $assessments->count(),
+                'latest' => $assessments->take(3),
+            ];
+        }
+
+        // For dashboard cards, you can sum all assessments
+        $totalAssessments = \App\Models\Assessment::whereHas('assessmentType', function($q) use ($subjectIds) {
+            $q->whereIn('subject_id', $subjectIds);
+        })->count();
+
+        // You can also get the latest overall assessments (limit 3, most recent)
+        $latestAssessments = \App\Models\Assessment::whereHas('assessmentType', function($q) use ($subjectIds) {
+            $q->whereIn('subject_id', $subjectIds);
+        })->orderByDesc('created_at')->limit(3)->get();
+
+        // Get the latest 3 assessment types by most recent assessment
+        $latestTypeIds = 
+            \App\Models\Assessment::whereHas('assessmentType', function($q) use ($subjectIds) {
+                $q->whereIn('subject_id', $subjectIds);
+            })
+            ->orderByDesc('created_at')
+            ->get()
+            ->pluck('assessment_type_id')
+            ->unique()
+            ->take(3)
+            ->values();
+
+        $latestTypeStats = [];
+        $latestTypes = \App\Models\AssessmentType::whereIn('id', $latestTypeIds)->get();
+        foreach ($latestTypes as $type) {
+            $assessments = $type->assessments()->orderByDesc('created_at')->take(3)->get();
+            $latestTypeStats[] = [
+                'type' => $type,
+                'assessments' => $assessments,
+            ];
+        }
+
+        return view('teacher.dashboard', compact(
             'totalStudents',
             'totalSubjects',
             'totalClassSections',
-            'totalUpcoming',
-            'totalGraded',
-            'totalPending',
-            'latestActivities',
-            'latestQuizzes',
-            'latestExams',
-            'latestRecitations',
-            'latestProjects',
+            'assessmentTypeStats',
+            'totalAssessments',
+            'latestTypeStats',
+            'latestAssessments'
         ));
     }
-    
-    // For department head or other roles, show basic dashboard
     return view('dashboard');
 })->middleware('auth')->name('dashboard');
 
@@ -553,3 +587,15 @@ Route::get('/subjects/{subject}/classes/{classSection}/gradebook/export', [\App\
     ->middleware('auth');
 
 Route::get('/subjects/{subject}/classes/{classSection}/students/{student}/analysis/{term}', [\App\Http\Controllers\StudentController::class, 'showAnalysis'])->name('students.analysis');
+
+// API: Get class sections for a subject and current teacher
+Route::get('/api/subjects/{subject}/classes', function ($subjectId) {
+    $user = auth()->user();
+    if (!$user->isTeacher()) {
+        abort(403, 'Access denied. Teachers only.');
+    }
+    $classSections = \App\Models\ClassSection::where('subject_id', $subjectId)
+        ->where('teacher_id', $user->id)
+        ->get(['id', 'section', 'schedule', 'student_count']);
+    return response()->json($classSections);
+})->middleware('auth');
