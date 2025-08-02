@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Subject;
 use App\Models\Student;
+use App\Http\Controllers\MLPredictionController;
 
 Route::get('/', function () {
     if (Auth::check()) {
@@ -358,8 +359,11 @@ Route::get('/subjects/{subject}/classes/{classSection}/{term}/grading', function
     // Get enrolled students for this class section
     $enrolledStudents = $classSectionModel->students()->orderBy('last_name')->orderBy('first_name')->get();
     
-    // Calculate grades for each student
+    // Calculate grades and metrics for each student
     $studentGrades = [];
+    $studentMetrics = [];
+    $metricsService = new \App\Services\StudentMetricsService();
+    
     foreach ($enrolledStudents as $student) {
         // Get assessment types for this subject
         $midtermAssessmentTypes = $subjectModel->assessmentTypes()
@@ -453,9 +457,13 @@ Route::get('/subjects/{subject}/classes/{classSection}/{term}/grading', function
             'final' => $finalGrade,
             'overall' => $overallGrade
         ];
+        
+        // Calculate ML metrics for this student (always use all terms)
+        $metrics = $metricsService->calculateStudentMetrics($student->id, $classSectionModel->id, null);
+        $studentMetrics[$student->id] = $metrics;
     }
     
-    return view('teacher.grading-system', compact('classSectionModel', 'enrolledStudents', 'term', 'studentGrades'));
+    return view('teacher.grading-system', compact('classSectionModel', 'enrolledStudents', 'term', 'studentGrades', 'studentMetrics'));
 })->name('grading.system')->middleware('auth');
 
 Route::post('/subjects/{subject}/classes/{classSection}/{term}/grading', function ($subject, $classSection, $term, Request $request) {
@@ -916,3 +924,12 @@ Route::get('/api/subjects/{subject}/classes', function ($subjectId) {
         ->get(['id', 'section', 'schedule', 'student_count']);
     return response()->json($classSections);
 })->middleware('auth');
+
+// ML Prediction Routes
+Route::prefix('api/ml')->middleware('auth')->group(function () {
+    Route::post('/predict/student', [MLPredictionController::class, 'getStudentRiskPredictions'])->name('ml.predict.student');
+    Route::post('/predict/bulk', [MLPredictionController::class, 'getBulkRiskPredictions'])->name('ml.predict.bulk');
+    Route::get('/health', [MLPredictionController::class, 'healthCheck'])->name('ml.health');
+    Route::get('/info', [MLPredictionController::class, 'getApiInfo'])->name('ml.info');
+    Route::get('/metrics/{studentId}/{classSectionId}', [MLPredictionController::class, 'getStudentMetrics'])->name('ml.metrics');
+});
