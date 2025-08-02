@@ -11,12 +11,12 @@ GRAIL is a smart grading system designed to help educators identify and support 
 - Performance graph visualization
 - Machine learning risk detection (multi-label classification)
 - Instructor-only authentication and access
-- Predicts multiple risk categories per student (e.g., "At Risk", "Chronic Procrastinator")
+- Predicts multiple risk categories per student (e.g., "At Risk", "Chronic Procrastinator", "Inconsistent Performer")
 - Flags students for early intervention based on performance trends
 
 ---
 
-## Core Machine Learning Features (Holup, still cooking)
+## Core Machine Learning Features (Holup, still cooking)(Updated: I cooked)
 
 - `avg_score_pct` – average performance across all assessments
 - `variation_score_pct` – consistency in scores
