@@ -138,7 +138,7 @@ class AssessmentController extends Controller
             }
 
             // Verify the student belongs to this class section
-            $student = $classSection->students()->where('id', $studentId)->first();
+            $student = $classSection->students()->where('students.id', $studentId)->first();
             if (!$student) {
                 $errors[] = 'Student not found';
                 continue;

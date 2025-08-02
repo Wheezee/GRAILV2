@@ -41,6 +41,10 @@
           <i data-lucide="book" class="w-5 h-5 text-red-600 dark:text-evsu"></i>
           <span class="font-medium">Subjects</span>
         </a>
+        <a href="{{ route('students.index') }}" class="flex items-center space-x-3 py-3 px-4 rounded-md text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+          <i data-lucide="users" class="w-5 h-5 text-red-600 dark:text-evsu"></i>
+          <span class="font-medium">Students</span>
+        </a>
         <button onclick="confirmLogout()" class="flex items-center space-x-3 py-3 px-4 rounded-md text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition w-full text-left">
             <i data-lucide="log-out" class="w-5 h-5 text-red-600 dark:text-evsu"></i>
             <span class="font-medium">Logout</span>

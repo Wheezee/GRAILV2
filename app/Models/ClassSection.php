@@ -30,6 +30,8 @@ class ClassSection extends Model
 
     public function students()
     {
-        return $this->hasMany(Student::class);
+        return $this->belongsToMany(Student::class, 'class_section_student')
+                    ->withPivot('enrollment_date', 'status')
+                    ->withTimestamps();
     }
 }

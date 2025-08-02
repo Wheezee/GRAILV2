@@ -14,7 +14,7 @@ class StudentController extends Controller
     {
         $subject = Subject::findOrFail($subjectId);
         $classSection = ClassSection::where('id', $classSectionId)->where('subject_id', $subjectId)->firstOrFail();
-        $student = Student::where('id', $studentId)->where('class_section_id', $classSectionId)->firstOrFail();
+        $student = $classSection->students()->where('students.id', $studentId)->firstOrFail();
         $assessmentTypes = $subject->assessmentTypes()->where('term', $term)->with(['assessments.scores'])->orderBy('order')->get();
         return view('teacher.student-analysis', compact('student', 'subject', 'classSection', 'assessmentTypes', 'term'));
     }

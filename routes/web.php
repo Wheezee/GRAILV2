@@ -358,7 +358,104 @@ Route::get('/subjects/{subject}/classes/{classSection}/{term}/grading', function
     // Get enrolled students for this class section
     $enrolledStudents = $classSectionModel->students()->orderBy('last_name')->orderBy('first_name')->get();
     
-    return view('teacher.grading-system', compact('classSectionModel', 'enrolledStudents', 'term'));
+    // Calculate grades for each student
+    $studentGrades = [];
+    foreach ($enrolledStudents as $student) {
+        // Get assessment types for this subject
+        $midtermAssessmentTypes = $subjectModel->assessmentTypes()
+            ->where('term', 'midterm')
+            ->orderBy('order')
+            ->get();
+            
+        $finalAssessmentTypes = $subjectModel->assessmentTypes()
+            ->where('term', 'final')
+            ->orderBy('order')
+            ->get();
+        
+        // Calculate midterm grade using gradebook logic
+        $midtermGrade = null;
+        $midtermTotalWeight = 0;
+        $midtermWeightedSum = 0;
+        
+        foreach ($midtermAssessmentTypes as $assessmentType) {
+            $assessments = $assessmentType->assessments;
+            $assessmentScores = collect();
+            
+            foreach ($assessments as $assessment) {
+                $score = $assessment->scores()->where('student_id', $student->id)->first();
+                if ($score && $score->score !== null) {
+                    // Calculate percentage based on max_score
+                    $percentage = ($score->score / $assessment->max_score) * 100;
+                    $assessmentScores->push($percentage);
+                }
+            }
+            
+            if ($assessmentScores->count() > 0) {
+                $assessmentTypeAverage = $assessmentScores->avg();
+                $midtermWeightedSum += ($assessmentTypeAverage * $assessmentType->weight);
+                $midtermTotalWeight += $assessmentType->weight;
+            }
+        }
+        
+        if ($midtermTotalWeight > 0) {
+            $midtermGrade = $midtermWeightedSum / $midtermTotalWeight;
+        }
+        
+        // Calculate final grade using gradebook logic
+        $finalGrade = null;
+        $finalTotalWeight = 0;
+        $finalWeightedSum = 0;
+        
+        foreach ($finalAssessmentTypes as $assessmentType) {
+            $assessments = $assessmentType->assessments;
+            $assessmentScores = collect();
+            
+            foreach ($assessments as $assessment) {
+                $score = $assessment->scores()->where('student_id', $student->id)->first();
+                if ($score && $score->score !== null) {
+                    // Calculate percentage based on max_score
+                    $percentage = ($score->score / $assessment->max_score) * 100;
+                    $assessmentScores->push($percentage);
+                }
+            }
+            
+            if ($assessmentScores->count() > 0) {
+                $assessmentTypeAverage = $assessmentScores->avg();
+                $finalWeightedSum += ($assessmentTypeAverage * $assessmentType->weight);
+                $finalTotalWeight += $assessmentType->weight;
+            }
+        }
+        
+        if ($finalTotalWeight > 0) {
+            $finalGrade = $finalWeightedSum / $finalTotalWeight;
+        }
+        
+        // Calculate overall grade (average of midterm and final)
+        $overallGrade = null;
+        $gradeCount = 0;
+        $gradeSum = 0;
+        
+        if ($midtermGrade !== null) {
+            $gradeSum += $midtermGrade;
+            $gradeCount++;
+        }
+        if ($finalGrade !== null) {
+            $gradeSum += $finalGrade;
+            $gradeCount++;
+        }
+        
+        if ($gradeCount > 0) {
+            $overallGrade = $gradeSum / $gradeCount;
+        }
+        
+        $studentGrades[$student->id] = [
+            'midterm' => $midtermGrade,
+            'final' => $finalGrade,
+            'overall' => $overallGrade
+        ];
+    }
+    
+    return view('teacher.grading-system', compact('classSectionModel', 'enrolledStudents', 'term', 'studentGrades'));
 })->name('grading.system')->middleware('auth');
 
 Route::post('/subjects/{subject}/classes/{classSection}/{term}/grading', function ($subject, $classSection, $term, Request $request) {
@@ -367,7 +464,7 @@ Route::post('/subjects/{subject}/classes/{classSection}/{term}/grading', functio
     }
     
     $request->validate([
-        'student_id' => 'required|string|max:255|unique:students,student_id',
+        'student_id' => 'required|string|max:255',
         'first_name' => 'required|string|max:255',
         'last_name' => 'required|string|max:255',
         'email' => 'nullable|email|max:255',
@@ -379,13 +476,35 @@ Route::post('/subjects/{subject}/classes/{classSection}/{term}/grading', functio
         ->where('teacher_id', auth()->id())
         ->firstOrFail();
     
-    // Create the student and assign to this class section
-    $student = Student::create([
-        'student_id' => $request->student_id,
-        'first_name' => $request->first_name,
-        'last_name' => $request->last_name,
-        'email' => $request->email,
-        'class_section_id' => $classSectionModel->id,
+    // Check if student already exists in this class section
+    $existingEnrollment = $classSectionModel->students()
+        ->where('students.student_id', $request->student_id)
+        ->first();
+    
+    if ($existingEnrollment) {
+        return back()->with('error', 'Student is already enrolled in this class section.');
+    }
+    
+    // Check if student exists in the system
+    $existingStudent = Student::where('student_id', $request->student_id)->first();
+    
+    if ($existingStudent) {
+        // Student exists, just enroll them in this class
+        $student = $existingStudent;
+    } else {
+        // Create new student
+        $student = Student::create([
+            'student_id' => $request->student_id,
+            'first_name' => $request->first_name,
+            'last_name' => $request->last_name,
+            'email' => $request->email,
+        ]);
+    }
+    
+    // Enroll them in the class section using the pivot table
+    $classSectionModel->students()->attach($student->id, [
+        'enrollment_date' => now(),
+        'status' => 'enrolled'
     ]);
     
     return back()->with('success', 'Student enrolled successfully!');
@@ -393,6 +512,57 @@ Route::post('/subjects/{subject}/classes/{classSection}/{term}/grading', functio
 
 Route::put('/subjects/{subject}/classes/{classSection}/{term}/grading/{student}', [\App\Http\Controllers\BatchEnrollmentController::class, 'updateStudent'])
     ->name('grading.update-student')->middleware('auth');
+
+// Enroll existing students (multiple selection)
+Route::post('/subjects/{subject}/classes/{classSection}/{term}/grading/enroll-existing', function ($subject, $classSection, $term, Request $request) {
+    if (!auth()->user()->isTeacher()) {
+        abort(403, 'Access denied. Teachers only.');
+    }
+    
+    $request->validate([
+        'student_ids' => 'required|array',
+        'student_ids.*' => 'exists:students,id'
+    ]);
+    
+    $subjectModel = auth()->user()->subjects()->findOrFail($subject);
+    $classSectionModel = \App\Models\ClassSection::where('id', $classSection)
+        ->where('subject_id', $subjectModel->id)
+        ->where('teacher_id', auth()->id())
+        ->firstOrFail();
+    
+    $enrolledCount = 0;
+    $errors = [];
+    
+    foreach ($request->student_ids as $studentId) {
+        // Check if student is already enrolled
+        $existingEnrollment = $classSectionModel->students()
+            ->where('students.id', $studentId)
+            ->first();
+        
+        if ($existingEnrollment) {
+            $errors[] = "Student is already enrolled in this class.";
+            continue;
+        }
+        
+        // Enroll the student
+        $classSectionModel->students()->attach($studentId, [
+            'enrollment_date' => now(),
+            'status' => 'enrolled'
+        ]);
+        
+        $enrolledCount++;
+    }
+    
+    if ($enrolledCount > 0) {
+        $message = "Successfully enrolled {$enrolledCount} student(s)!";
+        if (count($errors) > 0) {
+            $message .= " Some students were already enrolled.";
+        }
+        return back()->with('success', $message);
+    } else {
+        return back()->with('error', 'No students were enrolled. ' . implode(' ', $errors));
+    }
+})->name('grading.enroll-existing-students')->middleware('auth');
 
 // Assessment routes
 Route::get('/subjects/{subject}/classes/{classSection}/{term}/assessments/{assessmentType}', [\App\Http\Controllers\AssessmentController::class, 'index'])
@@ -587,6 +757,153 @@ Route::get('/subjects/{subject}/classes/{classSection}/gradebook/export', [\App\
     ->middleware('auth');
 
 Route::get('/subjects/{subject}/classes/{classSection}/students/{student}/analysis/{term}', [\App\Http\Controllers\StudentController::class, 'showAnalysis'])->name('students.analysis');
+
+// Students index for teachers
+Route::get('/students', function () {
+    if (!auth()->user()->isTeacher()) {
+        abort(403, 'Access denied. Teachers only.');
+    }
+    $students = \App\Models\Student::orderBy('last_name')->paginate(15);
+    return view('teacher.students.index', compact('students'));
+})->name('students.index')->middleware('auth');
+
+// Add student (for teachers)
+Route::post('/students', function (\Illuminate\Http\Request $request) {
+    if (!auth()->user()->isTeacher()) {
+        abort(403, 'Access denied. Teachers only.');
+    }
+    $validated = $request->validate([
+        'student_id' => 'required|string|max:255|unique:students,student_id',
+        'first_name' => 'required|string|max:255',
+        'last_name' => 'required|string|max:255',
+        'middle_name' => 'nullable|string|max:255',
+        'email' => 'nullable|email|max:255',
+        'birth_date' => 'nullable|date',
+        'gender' => 'nullable|string|max:20',
+        'contact_number' => 'nullable|string|max:50',
+        'address' => 'nullable|string|max:255',
+    ]);
+    \App\Models\Student::create($validated);
+    return redirect()->route('students.index')->with('success', 'Student added successfully!');
+})->name('students.store')->middleware('auth');
+
+// Update student (for teachers)
+Route::put('/students/{student}', function (\Illuminate\Http\Request $request, $studentId) {
+    if (!auth()->user()->isTeacher()) {
+        abort(403, 'Access denied. Teachers only.');
+    }
+    $student = \App\Models\Student::findOrFail($studentId);
+    $validated = $request->validate([
+        'student_id' => 'required|string|max:255|unique:students,student_id,' . $student->id,
+        'first_name' => 'required|string|max:255',
+        'last_name' => 'required|string|max:255',
+        'middle_name' => 'nullable|string|max:255',
+        'email' => 'nullable|email|max:255',
+        'birth_date' => 'nullable|date',
+        'gender' => 'nullable|string|max:20',
+        'contact_number' => 'nullable|string|max:50',
+        'address' => 'nullable|string|max:255',
+    ]);
+    $student->update($validated);
+    return redirect()->route('students.index')->with('success', 'Student updated successfully!');
+})->name('students.update')->middleware('auth');
+
+// Student profile page for teachers
+Route::get('/students/{student}', function ($studentId) {
+    if (!auth()->user()->isTeacher()) {
+        abort(403, 'Access denied. Teachers only.');
+    }
+    $student = \App\Models\Student::findOrFail($studentId);
+    
+    // Get enrolled classes for this student
+    $enrolledClasses = $student->classSections()->with(['subject', 'teacher'])->get();
+    
+    // Calculate academic data for each class
+    $academicData = [];
+    foreach ($enrolledClasses as $classSection) {
+        $midtermAssessments = $classSection->subject->assessmentTypes()
+            ->where('term', 'midterm')
+            ->with(['assessments.scores' => function($query) use ($student) {
+                $query->where('student_id', $student->id);
+            }])
+            ->get();
+            
+        $finalAssessments = $classSection->subject->assessmentTypes()
+            ->where('term', 'final')
+            ->with(['assessments.scores' => function($query) use ($student) {
+                $query->where('student_id', $student->id);
+            }])
+            ->get();
+        
+        // Calculate midterm performance
+        $midtermScores = collect();
+        $midtermCount = 0;
+        foreach ($midtermAssessments as $assessmentType) {
+            $midtermCount += $assessmentType->assessments->count();
+            foreach ($assessmentType->assessments as $assessment) {
+                $score = $assessment->scores->where('student_id', $student->id)->first();
+                if ($score && $score->score !== null) {
+                    // Calculate percentage based on max_score
+                    $percentage = ($score->score / $assessment->max_score) * 100;
+                    $midtermScores->push($percentage);
+                }
+            }
+        }
+        
+        // Calculate final performance
+        $finalScores = collect();
+        $finalCount = 0;
+        foreach ($finalAssessments as $assessmentType) {
+            $finalCount += $assessmentType->assessments->count();
+            foreach ($assessmentType->assessments as $assessment) {
+                $score = $assessment->scores->where('student_id', $student->id)->first();
+                if ($score && $score->score !== null) {
+                    // Calculate percentage based on max_score
+                    $percentage = ($score->score / $assessment->max_score) * 100;
+                    $finalScores->push($percentage);
+                }
+            }
+        }
+        
+        // Calculate totals
+        $allScores = $midtermScores->merge($finalScores);
+        $totalCount = $midtermCount + $finalCount;
+        $completedCount = $allScores->count();
+        
+        $academicData[$classSection->id] = [
+            'midterm' => [
+                'average' => $midtermScores->count() > 0 ? $midtermScores->avg() : null,
+                'count' => $midtermCount,
+                'completed' => $midtermScores->count(),
+                'scores' => $midtermScores
+            ],
+            'final' => [
+                'average' => $finalScores->count() > 0 ? $finalScores->avg() : null,
+                'count' => $finalCount,
+                'completed' => $finalScores->count(),
+                'scores' => $finalScores
+            ],
+            'total' => [
+                'average' => $allScores->count() > 0 ? $allScores->avg() : null,
+                'count' => $totalCount,
+                'scores' => $allScores
+            ],
+            'completed' => $completedCount
+        ];
+    }
+    
+    return view('teacher.students.show', compact('student', 'enrolledClasses', 'academicData'));
+})->name('students.show')->middleware('auth');
+
+// Delete student (for teachers)
+Route::delete('/students/{student}', function ($studentId) {
+    if (!auth()->user()->isTeacher()) {
+        abort(403, 'Access denied. Teachers only.');
+    }
+    $student = \App\Models\Student::findOrFail($studentId);
+    $student->delete();
+    return redirect()->route('students.index')->with('success', 'Student deleted successfully!');
+})->name('students.destroy')->middleware('auth');
 
 // API: Get class sections for a subject and current teacher
 Route::get('/api/subjects/{subject}/classes', function ($subjectId) {

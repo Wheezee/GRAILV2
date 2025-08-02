@@ -13,8 +13,13 @@ class Student extends Model
         'student_id',
         'first_name',
         'last_name',
+        'middle_name',
         'email',
         'class_section_id',
+        'birth_date',
+        'gender',
+        'contact_number',
+        'address',
     ];
 
     public function classSection()
@@ -24,8 +29,9 @@ class Student extends Model
 
     public function classSections()
     {
-        // Compatibility: returns a hasOne relationship as a collection
-        return $this->hasOne(ClassSection::class, 'id', 'class_section_id');
+        return $this->belongsToMany(ClassSection::class, 'class_section_student')
+                    ->withPivot('enrollment_date', 'status')
+                    ->withTimestamps();
     }
 
     public function assessmentScores()

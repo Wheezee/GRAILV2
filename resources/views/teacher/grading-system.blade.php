@@ -252,7 +252,7 @@
              </th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Student ID</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Name</th>
-            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Overall Grade</th>
+            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estimated Grade</th>
             <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
           </tr>
         </thead>
@@ -271,7 +271,40 @@
                 {{ $student->first_name }} {{ $student->last_name }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
-                <span class="text-gray-900 dark:text-gray-100 font-medium">--</span>
+                @php
+                  $studentGrade = $studentGrades[$student->id] ?? null;
+                  $midtermGrade = $studentGrade['midterm'] ?? null;
+                  $finalGrade = $studentGrade['final'] ?? null;
+                  $overallGrade = $studentGrade['overall'] ?? null;
+                @endphp
+                <div class="flex flex-col items-center gap-1">
+                  @if($midtermGrade !== null || $finalGrade !== null || $overallGrade !== null)
+                    <div class="flex items-center gap-2 text-xs">
+                      @if($midtermGrade !== null)
+                        <span class="text-blue-600 dark:text-blue-400 font-medium">{{ number_format($midtermGrade, 1) }}%</span>
+                      @else
+                        <span class="text-gray-400">--</span>
+                      @endif
+                      <span class="text-gray-400">|</span>
+                      @if($finalGrade !== null)
+                        <span class="text-red-600 dark:text-red-400 font-medium">{{ number_format($finalGrade, 1) }}%</span>
+                      @else
+                        <span class="text-gray-400">--</span>
+                      @endif
+                      <span class="text-gray-400">|</span>
+                      @if($overallGrade !== null)
+                        <span class="text-green-600 dark:text-green-400 font-medium">{{ number_format($overallGrade, 1) }}%</span>
+                      @else
+                        <span class="text-gray-400">--</span>
+                      @endif
+                    </div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                      <span class="text-blue-600">Midterm</span> | <span class="text-red-600">Final</span> | <span class="text-green-600">Overall</span>
+                    </div>
+                  @else
+                    <span class="text-gray-400">No grades yet</span>
+                  @endif
+                </div>
               </td>
                              <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
                  <div class="flex items-center justify-center gap-2">
@@ -321,35 +354,139 @@
 <!-- Enroll Student Modal -->
 <div id="enrollStudentModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
   <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 transform transition-all">
+    <!-- Modal Header -->
     <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-      <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">Enroll Student</h3>
+      <div class="flex items-center gap-3">
+        <i data-lucide="user-check" class="w-6 h-6 text-red-600"></i>
+        <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">Enroll Student</h3>
+      </div>
       <button onclick="closeEnrollStudentModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
         <i data-lucide="x" class="w-6 h-6"></i>
       </button>
     </div>
-    <form id="enrollStudentForm" method="POST" action="{{ route('grading.enroll-student', ['subject' => $classSectionModel->subject->id, 'classSection' => $classSectionModel->id, 'term' => $term]) }}" class="p-6">
+
+    <!-- Modal Body -->
+    <form method="POST" action="{{ route('grading.enroll-existing-students', ['subject' => $classSectionModel->subject->id, 'classSection' => $classSectionModel->id, 'term' => $term]) }}" class="p-6">
+      @csrf
+      <div class="space-y-4">
+        <!-- Multiple Students Selection -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Students to Enroll</label>
+          <div class="relative">
+            <input type="text" id="student_search" placeholder="Search students..." 
+                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:text-white mb-2">
+          </div>
+          
+          <!-- Students List with Checkboxes -->
+          <div class="border border-gray-300 dark:border-gray-600 rounded-lg max-h-48 overflow-y-auto bg-white dark:bg-gray-700">
+            @foreach(\App\Models\Student::whereNotIn('id', $enrolledStudents->pluck('id'))->orderBy('last_name')->orderBy('first_name')->get() as $student)
+              <div class="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-600 border-b border-gray-200 dark:border-gray-600 last:border-b-0 student-item">
+                <input type="checkbox" name="student_ids[]" value="{{ $student->id }}" id="student_{{ $student->id }}" 
+                       class="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500 dark:focus:ring-red-500 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-600 dark:border-gray-500 student-checkbox">
+                <label for="student_{{ $student->id }}" class="flex-1 cursor-pointer">
+                  <div class="flex items-center gap-2">
+                    <i data-lucide="user" class="w-4 h-4 text-red-600"></i>
+                    <span class="text-gray-900 dark:text-gray-100">{{ $student->student_id }} - {{ $student->first_name }} {{ $student->last_name }}</span>
+                  </div>
+                </label>
+              </div>
+            @endforeach
+          </div>
+          
+          <!-- Select All / Deselect All -->
+          <div class="flex items-center justify-between mt-2">
+            <div class="flex gap-2">
+              <button type="button" onclick="selectAllStudents()" class="text-sm text-red-600 hover:text-red-700 font-medium">
+                Select All
+              </button>
+              <button type="button" onclick="deselectAllStudents()" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-medium">
+                Deselect All
+              </button>
+            </div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">
+              <span id="selected-count">0</span> selected
+            </div>
+          </div>
+        </div>
+
+        <!-- Or Divider -->
+        <div class="relative">
+          <div class="absolute inset-0 flex items-center">
+            <div class="w-full border-t border-gray-300 dark:border-gray-600"></div>
+          </div>
+          <div class="relative flex justify-center text-sm">
+            <span class="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">or</span>
+          </div>
+        </div>
+
+        <!-- Create New Student Button -->
+        <button type="button" onclick="openCreateStudentModal()" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg font-medium transition-colors">
+          <i data-lucide="user-plus" class="w-4 h-4"></i>
+          Create New Student
+        </button>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="flex gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <button type="button" onclick="closeEnrollStudentModal()" 
+                class="flex-1 px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg font-medium transition-colors">
+          Cancel
+        </button>
+        <button type="submit" 
+                class="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors">
+          Enroll Students
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Create New Student Modal -->
+<div id="createStudentModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 transform transition-all">
+    <!-- Modal Header -->
+    <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+      <div class="flex items-center gap-3">
+        <i data-lucide="user-plus" class="w-6 h-6 text-red-600"></i>
+        <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">Create New Student</h3>
+      </div>
+      <button onclick="closeCreateStudentModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+        <i data-lucide="x" class="w-6 h-6"></i>
+      </button>
+    </div>
+
+    <!-- Modal Body -->
+    <form method="POST" action="{{ route('grading.enroll-student', ['subject' => $classSectionModel->subject->id, 'classSection' => $classSectionModel->id, 'term' => $term]) }}" class="p-6">
       @csrf
       <div class="space-y-4">
         <div>
-          <label for="student_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Student ID</label>
-          <input type="text" id="student_id" name="student_id" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:text-white" placeholder="e.g., 2021-0001">
+          <label for="new_student_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Student ID</label>
+          <input type="text" id="new_student_id" name="student_id" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:text-white" placeholder="e.g., 2021-0001">
         </div>
         <div>
-          <label for="first_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">First Name</label>
-          <input type="text" id="first_name" name="first_name" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:text-white" placeholder="e.g., John">
+          <label for="new_first_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">First Name</label>
+          <input type="text" id="new_first_name" name="first_name" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:text-white" placeholder="e.g., John">
         </div>
         <div>
-          <label for="last_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Last Name</label>
-          <input type="text" id="last_name" name="last_name" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:text-white" placeholder="e.g., Doe">
+          <label for="new_last_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Last Name</label>
+          <input type="text" id="new_last_name" name="last_name" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:text-white" placeholder="e.g., Doe">
         </div>
         <div>
-          <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email (Optional)</label>
-          <input type="email" id="email" name="email" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:text-white" placeholder="e.g., john.doe@email.com">
+          <label for="new_email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email (Optional)</label>
+          <input type="email" id="new_email" name="email" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:text-white" placeholder="e.g., john.doe@email.com">
         </div>
       </div>
+
+      <!-- Modal Footer -->
       <div class="flex gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-        <button type="button" onclick="closeEnrollStudentModal()" class="flex-1 px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg font-medium transition-colors">Cancel</button>
-        <button type="submit" class="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors">Enroll Student</button>
+        <button type="button" onclick="closeCreateStudentModal()" 
+                class="flex-1 px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg font-medium transition-colors">
+          Cancel
+        </button>
+        <button type="submit" 
+                class="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors">
+          Create & Enroll
+        </button>
       </div>
     </form>
   </div>
@@ -407,8 +544,65 @@ function openEnrollStudentModal() {
 function closeEnrollStudentModal() {
   document.getElementById('enrollStudentModal').classList.add('hidden');
   document.body.style.overflow = 'auto';
-  document.getElementById('enrollStudentForm').reset();
 }
+
+function openCreateStudentModal() {
+  document.getElementById('createStudentModal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeCreateStudentModal() {
+  document.getElementById('createStudentModal').classList.add('hidden');
+  document.body.style.overflow = 'auto';
+  document.getElementById('createStudentModal').querySelector('form').reset();
+}
+
+function selectAllStudents() {
+  document.querySelectorAll('.student-checkbox').forEach(checkbox => {
+    checkbox.checked = true;
+  });
+  updateSelectedCount();
+}
+
+function deselectAllStudents() {
+  document.querySelectorAll('.student-checkbox').forEach(checkbox => {
+    checkbox.checked = false;
+  });
+  updateSelectedCount();
+}
+
+function updateSelectedCount() {
+  const checkedBoxes = document.querySelectorAll('.student-checkbox:checked');
+  document.getElementById('selected-count').textContent = checkedBoxes.length;
+}
+
+// Student search functionality
+document.addEventListener('DOMContentLoaded', function() {
+  const searchInput = document.getElementById('student_search');
+  if (searchInput) {
+    searchInput.addEventListener('input', function() {
+      const searchTerm = this.value.toLowerCase();
+      const studentItems = document.querySelectorAll('.student-item');
+      
+      studentItems.forEach(item => {
+        const studentName = item.querySelector('span').textContent.toLowerCase();
+        if (studentName.includes(searchTerm)) {
+          item.style.display = 'flex';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    });
+  }
+  
+  // Update selected count when checkboxes change
+  document.querySelectorAll('.student-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', updateSelectedCount);
+  });
+  
+  // Initialize selected count
+  updateSelectedCount();
+});
 
 lucide.createIcons();
 

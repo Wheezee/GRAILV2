@@ -103,9 +103,9 @@ class BatchEnrollmentController extends Controller
                     continue;
                 }
 
-                // Check if student already exists
-                $existingStudent = Student::where('student_id', $studentData['student_id'])
-                    ->where('class_section_id', $classSection->id)
+                // Check if student already exists in this class section
+                $existingStudent = $classSection->students()
+                    ->where('students.student_id', $studentData['student_id'])
                     ->first();
 
                 if ($existingStudent) {
@@ -119,13 +119,28 @@ class BatchEnrollmentController extends Controller
             // If no errors, save all students
             if (empty($errors)) {
                 foreach ($students as $studentData) {
-                    Student::create([
-                        'student_id' => $studentData['student_id'],
-                        'first_name' => $studentData['first_name'],
-                        'last_name' => $studentData['last_name'],
-                        'email' => $studentData['email'],
-                        'class_section_id' => $classSection->id,
+                    // Check if student exists in the system
+                    $existingStudent = Student::where('student_id', $studentData['student_id'])->first();
+                    
+                    if ($existingStudent) {
+                        // Student exists, just enroll them in this class
+                        $student = $existingStudent;
+                    } else {
+                        // Create new student
+                        $student = Student::create([
+                            'student_id' => $studentData['student_id'],
+                            'first_name' => $studentData['first_name'],
+                            'last_name' => $studentData['last_name'],
+                            'email' => $studentData['email'],
+                        ]);
+                    }
+                    
+                    // Enroll them in the class section
+                    $classSection->students()->attach($student->id, [
+                        'enrollment_date' => now(),
+                        'status' => 'enrolled'
                     ]);
+                    
                     $successCount++;
                 }
 
@@ -183,12 +198,10 @@ class BatchEnrollmentController extends Controller
             ->where('teacher_id', auth()->id())
             ->firstOrFail();
 
-        $student = Student::where('id', $studentId)
-            ->where('class_section_id', $classSection->id)
-            ->firstOrFail();
+        $student = Student::findOrFail($studentId);
 
-        // Delete the student
-        $student->delete();
+        // Remove the student from this class section (unenroll)
+        $classSection->students()->detach($student->id);
 
         // Update student count
         $classSection->update([
@@ -215,13 +228,12 @@ class BatchEnrollmentController extends Controller
         ]);
 
         $studentIds = $request->input('student_ids');
-        $students = Student::whereIn('id', $studentIds)
-            ->where('class_section_id', $classSection->id)
-            ->get();
+        $students = Student::whereIn('id', $studentIds)->get();
 
         $unenrolledCount = 0;
         foreach ($students as $student) {
-            $student->delete();
+            // Remove the student from this class section (unenroll)
+            $classSection->students()->detach($student->id);
             $unenrolledCount++;
         }
 
@@ -267,7 +279,7 @@ class BatchEnrollmentController extends Controller
             ->where('teacher_id', auth()->id())
             ->firstOrFail();
 
-        $student = $classSectionModel->students()->where('id', $studentId)->firstOrFail();
+        $student = $classSectionModel->students()->where('students.id', $studentId)->firstOrFail();
 
         $validated = $request->validate([
             'student_id' => 'required|string|max:255|unique:students,student_id,' . $student->id,
