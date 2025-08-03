@@ -67,7 +67,7 @@ class GoogleAuthController extends Controller
             // Log in the user
             Auth::login($user);
 
-            return redirect()->intended('/dashboard');
+            return redirect()->intended('https://your-sitename.onrender.com/dashboard');
 
         } catch (Exception $e) {
             return redirect('/login')->with('error', 'Google authentication failed. Please try again.');
