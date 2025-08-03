@@ -69,25 +69,31 @@ class BatchEnrollmentController extends Controller
             foreach ($rows as $row) {
                 $rowNumber++;
                 
-                // Skip header row
-                if ($rowNumber === 1) {
+                // Skip header rows (rows 1-6 for your Excel format)
+                if ($rowNumber <= 6) {
                     continue;
                 }
 
                 // Get data from row array
                 $data = $row;
                 
-                // Check if we have enough columns
-                if (count($data) < 3) {
-                    $errors[] = "Row {$rowNumber}: Insufficient data. Need at least Student ID, First Name, and Last Name.";
+                // Check if we have enough columns (at least Student ID and Fullname)
+                if (count($data) < 2) {
+                    $errors[] = "Row {$rowNumber}: Insufficient data. Need at least Student ID and Fullname.";
                     continue;
                 }
 
+                // Parse the full name from "LASTNAME, FIRSTNAME MIDDLENAME" format
+                $fullName = trim($data[1]);
+                $nameParts = $this->parseFullName($fullName);
+
                 $studentData = [
-                    'student_id' => trim($data[0]),
-                    'first_name' => trim($data[1]),
-                    'last_name' => trim($data[2]),
-                    'email' => isset($data[3]) ? trim($data[3]) : null,
+                    'student_id' => trim($data[0]), // Column A: Student ID
+                    'first_name' => $nameParts['first_name'],
+                    'last_name' => $nameParts['last_name'],
+                    'middle_name' => $nameParts['middle_name'],
+                    'gender' => isset($data[5]) ? trim($data[5]) : null, // Column F: Gender
+                    'email' => null, // Not available in your Excel format
                 ];
 
                 // Validate student data
@@ -95,6 +101,8 @@ class BatchEnrollmentController extends Controller
                     'student_id' => 'required|string|max:255',
                     'first_name' => 'required|string|max:255',
                     'last_name' => 'required|string|max:255',
+                    'middle_name' => 'nullable|string|max:255',
+                    'gender' => 'nullable|string|max:20',
                     'email' => 'nullable|email|max:255',
                 ]);
 
@@ -131,6 +139,8 @@ class BatchEnrollmentController extends Controller
                             'student_id' => $studentData['student_id'],
                             'first_name' => $studentData['first_name'],
                             'last_name' => $studentData['last_name'],
+                            'middle_name' => $studentData['middle_name'],
+                            'gender' => $studentData['gender'],
                             'email' => $studentData['email'],
                         ]);
                     }
@@ -163,23 +173,58 @@ class BatchEnrollmentController extends Controller
         }
     }
 
-    public function downloadTemplate()
+    public function downloadTemplate($subjectId, $classSectionId)
     {
+        if (!auth()->user()->isTeacher()) {
+            abort(403, 'Access denied. Teachers only.');
+        }
+
+        $classSection = ClassSection::where('id', $classSectionId)
+            ->where('subject_id', $subjectId)
+            ->where('teacher_id', auth()->id())
+            ->firstOrFail();
+
+        $subject = $classSection->subject;
+        $teacher = $classSection->teacher;
+        
+        // Get current academic year and term
+        $currentYear = date('Y');
+        $nextYear = $currentYear + 1;
+        $academicYear = "{$currentYear}-{$nextYear}";
+        
+        // Determine current term based on month
+        $currentMonth = date('n');
+        $term = '';
+        if ($currentMonth >= 6 && $currentMonth <= 10) {
+            $term = '1';
+        } elseif ($currentMonth >= 11 || $currentMonth <= 3) {
+            $term = '2';
+        } else {
+            $term = '3';
+        }
+
         $headers = [
             'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="student_enrollment_template.csv"',
         ];
 
-        $callback = function() {
+        $callback = function() use ($subject, $classSection, $teacher, $academicYear, $term) {
             $file = fopen('php://output', 'w');
             
-            // Add headers
-            fputcsv($file, ['Student ID', 'First Name', 'Last Name', 'Email (Optional)']);
+            // Add header information (rows 1-5) - Dynamic based on actual data
+            fputcsv($file, ['Eastern Visayas State University', '', '', '', '', '', '']);
+            fputcsv($file, ['Tanauan Leyte', '', '', '', '', '', '']);
+            fputcsv($file, ["Class List for {$subject->code} Section [{$classSection->section}]", '', '', '', '', '', '']);
+            fputcsv($file, ["SY {$academicYear} Term: {$term}", '', '', '', '', '', '']);
+            fputcsv($file, ['', '', '', '', '', '', '']);
             
-            // Add example rows
-            fputcsv($file, ['2021-0001', 'John', 'Doe', 'john.doe@email.com']);
-            fputcsv($file, ['2021-0002', 'Jane', 'Smith', 'jane.smith@email.com']);
-            fputcsv($file, ['2021-0003', 'Mike', 'Johnson', '']);
+            // Add column headers (row 6)
+            fputcsv($file, ['Student ID', 'Fullname', 'Major', 'Year Level', 'Registered', 'Gender', 'Grade']);
+            
+            // Add example rows (starting from row 7)
+            fputcsv($file, ['2019-35557', 'Carreon, Benjamin N.', 'BSIT', '3', '1', 'M', '1.9']);
+            fputcsv($file, ['2019-35842', 'Baldoze, Nerissa G.', 'BSTI', '3', '1', 'F', '2.5']);
+            fputcsv($file, ['2019-35527', 'Fernandez, Michell A.', 'BSIT', '3', '1', 'F', '1.7']);
             
             fclose($file);
         };
@@ -291,5 +336,58 @@ class BatchEnrollmentController extends Controller
         $student->update($validated);
 
         return back()->with('success', 'Student updated successfully!');
+    }
+
+    /**
+     * Parse full name from "LASTNAME, FIRSTNAME MIDDLENAME" format
+     */
+    private function parseFullName($fullName)
+    {
+        // Remove extra spaces and trim
+        $fullName = trim(preg_replace('/\s+/', ' ', $fullName));
+        
+        // Check if name contains comma (LASTNAME, FIRSTNAME format)
+        if (strpos($fullName, ',') !== false) {
+            $parts = explode(',', $fullName, 2);
+            $lastName = trim($parts[0]);
+            $firstMiddle = trim($parts[1]);
+            
+            // Split first and middle names
+            $nameParts = explode(' ', $firstMiddle, 2);
+            $firstName = trim($nameParts[0]);
+            $middleName = isset($nameParts[1]) ? trim($nameParts[1]) : null;
+            
+            return [
+                'first_name' => $firstName,
+                'last_name' => $lastName,
+                'middle_name' => $middleName
+            ];
+        } else {
+            // No comma found, assume it's already in FIRSTNAME LASTNAME format
+            $nameParts = explode(' ', $fullName, 3);
+            
+            if (count($nameParts) >= 3) {
+                // FIRSTNAME MIDDLENAME LASTNAME
+                return [
+                    'first_name' => trim($nameParts[0]),
+                    'middle_name' => trim($nameParts[1]),
+                    'last_name' => trim($nameParts[2])
+                ];
+            } elseif (count($nameParts) == 2) {
+                // FIRSTNAME LASTNAME
+                return [
+                    'first_name' => trim($nameParts[0]),
+                    'last_name' => trim($nameParts[1]),
+                    'middle_name' => null
+                ];
+            } else {
+                // Single name
+                return [
+                    'first_name' => trim($nameParts[0]),
+                    'last_name' => '',
+                    'middle_name' => null
+                ];
+            }
+        }
     }
 } 

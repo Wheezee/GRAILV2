@@ -41,7 +41,7 @@
     <p class="text-gray-600 dark:text-gray-400 mt-1">{{ $classSection->subject->code }} - {{ $classSection->subject->title }} ({{ $classSection->section }})</p>
   </div>
   <div class="flex gap-2">
-    <a href="{{ route('batch-enrollment.template') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors">
+    <a href="{{ route('batch-enrollment.template', ['subject' => $classSection->subject->id, 'classSection' => $classSection->id]) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors">
       <i data-lucide="download" class="w-4 h-4"></i>
       Download Template
     </a>
@@ -128,20 +128,29 @@
                 <th class="text-left py-1">Column B</th>
                 <th class="text-left py-1">Column C</th>
                 <th class="text-left py-1">Column D</th>
+                <th class="text-left py-1">Column E</th>
+                <th class="text-left py-1">Column F</th>
+                <th class="text-left py-1">Column G</th>
               </tr>
             </thead>
             <tbody>
               <tr class="border-b border-gray-200 dark:border-gray-600">
                 <td class="py-1 font-medium">Student ID</td>
-                <td class="py-1 font-medium">First Name</td>
-                <td class="py-1 font-medium">Last Name</td>
-                <td class="py-1 font-medium">Email (Optional)</td>
+                <td class="py-1 font-medium">Fullname</td>
+                <td class="py-1 font-medium">Major</td>
+                <td class="py-1 font-medium">Year Level</td>
+                <td class="py-1 font-medium">Registered</td>
+                <td class="py-1 font-medium">Gender</td>
+                <td class="py-1 font-medium">Grade</td>
               </tr>
               <tr>
-                <td class="py-1">2021-0001</td>
-                <td class="py-1">John</td>
-                <td class="py-1">Doe</td>
-                <td class="py-1">john.doe@email.com</td>
+                <td class="py-1">2019-35557</td>
+                <td class="py-1">Carreon, Benjamin N.</td>
+                <td class="py-1">BSIT</td>
+                <td class="py-1">3</td>
+                <td class="py-1">1</td>
+                <td class="py-1">M</td>
+                <td class="py-1">1.9</td>
               </tr>
             </tbody>
           </table>
@@ -151,12 +160,13 @@
       <div>
         <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-2">Requirements:</h4>
         <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-          <li>• First row should contain headers (will be skipped)</li>
+          <li>• Headers should be on row 6 (Student ID, Fullname, Major, Year Level, Registered, Gender, Grade)</li>
+          <li>• Student data should start from row 7</li>
           <li>• Student ID must be unique within the class</li>
-          <li>• First Name and Last Name are required</li>
-          <li>• Email is optional but must be valid if provided</li>
-                     <li>• File must be in .xlsx, .xls, or .csv format</li>
-           <li>• Excel files are automatically converted to CSV for processing</li>
+          <li>• Fullname should be in "LASTNAME, FIRSTNAME MIDDLENAME" format</li>
+          <li>• Gender is optional but will be stored if provided</li>
+          <li>• File must be in .xlsx, .xls, or .csv format</li>
+          <li>• Excel files are automatically converted to CSV for processing</li>
           <li>• Maximum file size: 2MB</li>
         </ul>
       </div>
@@ -164,10 +174,11 @@
       <div>
         <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-2">Tips:</h4>
         <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-          <li>• Download the template to see the exact format</li>
+          <li>• Your Excel file format is already supported</li>
           <li>• Make sure Student IDs are unique</li>
           <li>• Remove any empty rows</li>
           <li>• Check for extra spaces in names</li>
+          <li>• The system will automatically parse full names into first, last, and middle names</li>
         </ul>
       </div>
     </div>

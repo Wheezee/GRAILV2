@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Subject;
 use App\Models\Student;
 use App\Http\Controllers\MLPredictionController;
+use App\Http\Controllers\GoogleAuthController;
 
 Route::get('/', function () {
     if (Auth::check()) {
@@ -135,6 +136,10 @@ Route::get('/dashboard', function () {
     }
     return view('dashboard');
 })->middleware('auth')->name('dashboard');
+
+// Google OAuth Routes
+Route::get('/auth/google', [GoogleAuthController::class, 'redirectToGoogle'])->name('google.login');
+Route::get('/auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback'])->name('google.callback');
 
 // Logout
 Route::post('/logout', function (Request $request) {
@@ -595,7 +600,7 @@ Route::post('/subjects/{subject}/classes/{classSection}/batch-enrollment', [App\
     ->name('batch-enrollment.upload')
     ->middleware('auth');
 
-Route::get('/batch-enrollment/template', [App\Http\Controllers\BatchEnrollmentController::class, 'downloadTemplate'])
+Route::get('/subjects/{subject}/classes/{classSection}/batch-enrollment/template', [App\Http\Controllers\BatchEnrollmentController::class, 'downloadTemplate'])
     ->name('batch-enrollment.template')
     ->middleware('auth');
 
@@ -933,3 +938,5 @@ Route::prefix('api/ml')->middleware('auth')->group(function () {
     Route::get('/info', [MLPredictionController::class, 'getApiInfo'])->name('ml.info');
     Route::get('/metrics/{studentId}/{classSectionId}', [MLPredictionController::class, 'getStudentMetrics'])->name('ml.metrics');
 });
+
+Route::get('/subjects/{subject}/classes/{classSection}/analytics/{term}', [\App\Http\Controllers\StudentController::class, 'getAnalytics'])->name('class.analytics');

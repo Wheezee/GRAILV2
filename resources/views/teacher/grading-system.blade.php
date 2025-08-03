@@ -74,6 +74,119 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  padding: 1rem;
+}
+
+.modal-overlay.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 0.75rem;
+  width: 100%;
+  max-width: 64rem;
+  max-height: 90vh;
+  overflow-y: auto;
+  transform: scale(0.95);
+  transition: transform 0.3s ease;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.dark .modal-content {
+  background: #1f2937;
+  border: 1px solid #374151;
+}
+
+.modal-overlay.show .modal-content {
+  transform: scale(1);
+}
+
+/* Multi-range slider styles */
+.slider-container {
+  position: relative;
+  width: 100%;
+  height: 20px;
+  background: #e5e7eb;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  overflow: visible;
+}
+
+.segment {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border: 3px solid white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  z-index: 10;
+  transition: all 0.2s ease;
+}
+
+.handle:hover {
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.handle.active {
+  transform: translate(-50%, -50%) scale(1.2);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+/* Assessment type colors */
+.assessment-blue { background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%); }
+.assessment-green { background: linear-gradient(90deg, #10b981 0%, #059669 100%); }
+.assessment-purple { background: linear-gradient(90deg, #8b5cf6 0%, #7c3aed 100%); }
+.assessment-orange { background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%); }
+.assessment-pink { background: linear-gradient(90deg, #ec4899 0%, #db2777 100%); }
+.assessment-indigo { background: linear-gradient(90deg, #6366f1 0%, #4f46e5 100%); }
+.assessment-teal { background: linear-gradient(90deg, #14b8a6 0%, #0d9488 100%); }
+.assessment-red { background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%); }
+
+/* Dark mode support */
+.dark .slider-container {
+  background: #374151;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .modal-content {
+    max-width: 95vw;
+    margin: 0.5rem;
+  }
+  
+  .modal-overlay {
+    padding: 0.5rem;
+  }
+}
 </style>
 
 @section('content')
@@ -169,20 +282,10 @@
     <p class="text-gray-600 dark:text-gray-400 mt-1">{{ $classSectionModel->subject->code }} - {{ $classSectionModel->subject->title }}</p>
   </div>
   <div class="flex gap-2">
-    <!-- ML Health Indicator -->
-    <div id="mlHealthIndicator" class="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
-      <div class="ml-loading">
-        <i data-lucide="loader-2" class="w-4 h-4 animate-spin text-gray-400"></i>
-      </div>
-      <div class="ml-healthy hidden">
-        <i data-lucide="check-circle" class="w-4 h-4 text-green-500"></i>
-        <span class="text-sm text-gray-600 dark:text-gray-400">ML Active</span>
-      </div>
-      <div class="ml-unhealthy hidden">
-        <i data-lucide="x-circle" class="w-4 h-4 text-red-500"></i>
-        <span class="text-sm text-gray-600 dark:text-gray-400">ML Offline</span>
-      </div>
-    </div>
+    <button onclick="openEditSubjectModal()" class="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow transition-transform transform hover:scale-105 focus:outline-none">
+      <i data-lucide="edit" class="w-5 h-5"></i>
+      Edit Subject
+    </button>
     <a href="{{ route('batch-enrollment.form', ['subject' => $classSectionModel->subject->id, 'classSection' => $classSectionModel->id]) }}" class="inline-flex items-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow transition-transform transform hover:scale-105 focus:outline-none">
       <i data-lucide="upload" class="w-5 h-5"></i>
       Batch Enroll
@@ -255,24 +358,36 @@
     </div>
   </div>
 
-  <!-- Students Table -->
-  <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
-    <div class="overflow-x-auto">
-      <table class="w-full">
-                 <thead class="bg-gray-50 dark:bg-gray-700">
-           <tr>
-             <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-               <input type="checkbox" id="selectAll" class="rounded border-gray-300 text-red-600 focus:ring-red-500">
-             </th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Student ID</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Name</th>
-            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estimated Grade</th>
-            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ML Risk</th>
-            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
-          </tr>
-        </thead>
-        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                     @forelse($enrolledStudents as $student)
+<!-- Filter and Sort Controls -->
+<div class="flex flex-wrap items-center justify-between mb-4 gap-2">
+  <div>
+    <label for="riskFilter" class="mr-2 font-medium text-sm">Filter by Risk:</label>
+    <select id="riskFilter" class="border rounded px-2 py-1 text-sm">
+      <option value="all">Show All</option>
+      <option value="high">High Risk</option>
+      <option value="low">Low Risk</option>
+      <option value="safe">Safe</option>
+    </select>
+  </div>
+</div>
+<!-- Students Table -->
+<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full" id="studentsTable">
+      <thead class="bg-gray-50 dark:bg-gray-700">
+        <tr>
+          <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+            <input type="checkbox" id="selectAll" class="rounded border-gray-300 text-red-600 focus:ring-red-500">
+          </th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Student ID</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer sort-header" data-sort="name">Name <span class="sort-icon">⇅</span></th>
+          <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer sort-header" data-sort="grade">Estimated Grade <span class="sort-icon">⇅</span></th>
+          <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer sort-header" data-sort="risk">ML Risk <span class="sort-icon">⇅</span></th>
+          <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+        @forelse($enrolledStudents as $student)
              <tr class="hover:bg-gray-50 dark:hover:bg-gray-700" data-student-id="{{ $student->id }}">
                <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
                  <input type="checkbox" name="student_ids[]" value="{{ $student->id }}" class="student-checkbox rounded border-gray-300 text-red-600 focus:ring-red-500">
@@ -282,7 +397,7 @@
                   {{ $student->student_id }}
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+              <td class="px-6 py-4 whitespace-nowrap text-sm student-name-cell text-gray-900 dark:text-gray-100" data-student-id="{{ $student->id }}">
                 {{ $student->first_name }} {{ $student->last_name }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
@@ -636,6 +751,397 @@
   </div>
 </div>
 
+<!-- Edit Subject Modal -->
+<div id="editSubjectModal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="p-6">
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Edit Subject</h3>
+        <button onclick="closeEditSubjectModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+          <i data-lucide="x" class="w-6 h-6"></i>
+        </button>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="mb-8">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Step <span id="editCurrentStep">1</span> of 2</span>
+          <span class="text-sm text-gray-500 dark:text-gray-400" id="editStepTitle">Basic Information</span>
+        </div>
+        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+          <div id="editProgressBar" class="bg-red-600 h-2 rounded-full transition-all duration-300" style="width: 50%"></div>
+        </div>
+      </div>
+
+      <!-- Step 1: Basic Subject Info -->
+      <div id="editStep1" class="max-w-2xl mx-auto">
+        <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Step 1: Basic Information</h2>
+          
+          <div class="space-y-4">
+            <div>
+              <label for="edit_code" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Subject ID</label>
+              <input type="text" id="edit_code" name="code" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white" placeholder="e.g., MATH101">
+            </div>
+            
+            <div>
+              <label for="edit_title" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Subject Name</label>
+              <input type="text" id="edit_title" name="title" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white" placeholder="e.g., College Algebra">
+            </div>
+            
+            <div>
+              <label for="edit_units" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Units</label>
+              <input type="number" id="edit_units" name="units" step="0.5" min="0.5" max="6" required class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white" placeholder="3.0">
+            </div>
+          </div>
+          
+          <div class="flex justify-center mt-6">
+            <button type="button" onclick="editNextStep()" class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium">
+              Next: Assessment Builder
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Assessment Type Builder -->
+      <div id="editStep2" class="max-w-4xl mx-auto hidden">
+        <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 text-center">Step 2: Assessment Type Builder</h2>
+          
+          <!-- Grading Structure Selection -->
+          <div class="mb-8">
+            <h3 class="text-md font-medium text-gray-900 dark:text-gray-100 mb-4 text-center">Grading Structure</h3>
+            
+            <div class="space-y-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+                <label class="flex items-center p-4 border border-gray-200 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                  <input type="radio" name="edit_grading_type" value="balanced" class="mr-3" checked>
+                  <div>
+                    <div class="font-medium text-gray-900 dark:text-gray-100">Balanced (50/50)</div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400">Equal weight for Midterm and Final</div>
+                  </div>
+                </label>
+                
+                <label class="flex items-center p-4 border border-gray-200 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                  <input type="radio" name="edit_grading_type" value="custom" class="mr-3">
+                  <div>
+                    <div class="font-medium text-gray-900 dark:text-gray-100">Custom Weights</div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400">Define your own Midterm/Final weights</div>
+                  </div>
+                </label>
+              </div>
+              
+              <div id="editCustomWeights" class="hidden max-w-md mx-auto">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label for="edit_midterm_weight" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Midterm Weight (%)</label>
+                    <input type="number" id="edit_midterm_weight" name="midterm_weight" min="0" max="100" step="5" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white" value="50">
+                  </div>
+                  <div>
+                    <label for="edit_final_weight" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Final Weight (%)</label>
+                    <input type="number" id="edit_final_weight" name="final_weight" min="0" max="100" step="5" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white" value="50">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Midterm Assessment Types -->
+          <div class="mb-8">
+            <h3 class="text-md font-medium text-gray-900 dark:text-gray-100 mb-4 text-center">Midterm Assessment Types</h3>
+            
+            <div id="editMidtermAssessmentTypes" class="space-y-4 max-w-2xl mx-auto">
+              <!-- Assessment types will be added here dynamically -->
+            </div>
+            
+            <div class="text-center mt-4">
+              <button type="button" onclick="editAddAssessmentType('midterm')" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                Add Assessment Type
+              </button>
+            </div>
+          </div>
+
+          <!-- Midterm Progress Bar -->
+          <div class="mb-8 max-w-2xl mx-auto">
+            <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
+              <span>Midterm Weight Distribution</span>
+              <span id="editMidtermTotalWeight">0%</span>
+            </div>
+            <div class="slider-container" id="editMidtermProgressContainer">
+              <!-- Progress bar segments will be added here dynamically -->
+            </div>
+            <div id="editMidtermOutput" class="text-xs text-gray-500 dark:text-gray-400 mt-1"></div>
+            <div id="editMidtermError"></div>
+          </div>
+
+          <!-- Final Assessment Types -->
+          <div class="mb-8">
+            <h3 class="text-md font-medium text-gray-900 dark:text-gray-100 mb-4 text-center">Final Assessment Types</h3>
+            
+            <div id="editFinalAssessmentTypes" class="space-y-4 max-w-2xl mx-auto">
+              <!-- Assessment types will be added here dynamically -->
+            </div>
+            
+            <div class="text-center mt-4">
+              <button type="button" onclick="editAddAssessmentType('final')" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                Add Assessment Type
+              </button>
+            </div>
+          </div>
+
+          <!-- Final Progress Bar -->
+          <div class="mb-8 max-w-2xl mx-auto">
+            <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
+              <span>Final Weight Distribution</span>
+              <span id="editFinalTotalWeight">0%</span>
+            </div>
+            <div class="slider-container" id="editFinalProgressContainer">
+              <!-- Progress bar segments will be added here dynamically -->
+            </div>
+            <div id="editFinalOutput" class="text-xs text-gray-500 dark:text-gray-400 mt-1"></div>
+            <div id="editFinalError"></div>
+          </div>
+
+          <!-- Navigation Buttons -->
+          <div class="flex justify-center gap-4 mt-8">
+            <button type="button" onclick="editPrevStep()" class="px-6 py-3 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors font-medium">
+              ← Back
+            </button>
+            <button type="button" onclick="editSaveSubject()" class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium">
+              Update Subject
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Analytics Button -->
+<div class="mb-4 flex justify-end">
+  <button id="showAnalyticsBtn" onclick="openAnalyticsModal()" class="btn btn-primary bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg shadow">
+    Show Analytics
+  </button>
+</div>
+
+<!-- Analytics Modal (Custom) -->
+<div id="analyticsModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-2 sm:p-4">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl mx-2 sm:mx-4 transform transition-all max-h-[90vh] flex flex-col">
+    <!-- Modal Header -->
+    <div class="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+      <div class="flex items-center gap-3">
+        <i data-lucide="bar-chart-2" class="w-6 h-6 text-blue-600"></i>
+        <h3 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">Student Performance Analytics</h3>
+      </div>
+      <button onclick="closeAnalyticsModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+        <i data-lucide="x" class="w-6 h-6"></i>
+      </button>
+    </div>
+    <!-- Modal Body -->
+    <div class="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
+      <!-- Analytics Cards -->
+      <div id="analyticsCards" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4"></div>
+      
+      <!-- Chart Section -->
+      <div class="bg-white dark:bg-gray-700 rounded-lg shadow-sm p-3 sm:p-4">
+        <div class="flex items-center gap-2 mb-3">
+          <i data-lucide="bar-chart-3" class="w-5 h-5 text-blue-600"></i>
+          <span class="font-semibold text-gray-800 dark:text-gray-100 text-sm sm:text-base">Risk Level Distribution</span>
+        </div>
+        <div class="flex justify-center">
+          <div class="relative" style="width: 100%; height: 300px;">
+            <canvas id="performanceChart"></canvas>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Summary -->
+      <div id="analyticsSummary" class="text-center text-sm sm:text-base"></div>
+    </div>
+    <!-- Modal Footer -->
+    <div class="flex gap-3 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700">
+      <button type="button" onclick="closeAnalyticsModal()" class="flex-1 px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg font-medium transition-colors">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+function openAnalyticsModal() {
+  document.getElementById('analyticsModal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  // Fetch and render chart and cards
+  var subjectId = @json($classSectionModel->subject->id);
+  var classSectionId = @json($classSectionModel->id);
+  var term = @json($term);
+  var chartInstance = window.analyticsChartInstance || null;
+  fetch(`/subjects/${subjectId}/classes/${classSectionId}/analytics/${term}`)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log('Analytics data received:', data); // Debug log
+      
+      // Count risk badges from the current page for all risk types
+      const riskCounts = {
+        safe: 0,
+        atRisk: 0,
+        lowRisk: 0,
+        inconsistentPerformer: 0,
+        chronicProcrastinator: 0,
+        incompleteWork: 0,
+      };
+      document.querySelectorAll('.ml-risk-indicator .risk-badges span').forEach(badge => {
+        const text = badge.textContent.toLowerCase();
+        if (text.includes('safe') || text.includes('not at risk')) riskCounts.safe++;
+        if (text.includes('at risk')) riskCounts.atRisk++;
+        if (text.includes('low risk')) riskCounts.lowRisk++;
+        if (text.includes('inconsistent performer')) riskCounts.inconsistentPerformer++;
+        if (text.includes('chronic procrastinator')) riskCounts.chronicProcrastinator++;
+        if (text.includes('incomplete work')) riskCounts.incompleteWork++;
+      });
+      // Ensure all values are numbers or 0
+      const safeData = {
+        total: parseInt(data.total) || 0,
+        passing: riskCounts.safe,
+        atRisk: riskCounts.lowRisk,
+        failing: riskCounts.atRisk,
+        avgGrade: parseFloat(data.avgGrade) || null,
+        avgRisk: parseFloat(data.avgRisk) || null,
+        avgLate: parseFloat(data.avgLate) || null,
+        avgMissed: parseFloat(data.avgMissed) || null
+      };
+      console.log('Risk counts from page:', riskCounts);
+      console.log('Safe data:', safeData); // Debug log
+      // Cards
+      const cards = [
+        { label: 'Total Students', value: safeData.total, icon: 'users', color: 'bg-gray-100 dark:bg-gray-700' },
+        { label: 'Safe', value: riskCounts.safe, icon: 'check-circle', color: 'bg-green-100 dark:bg-green-900/20' },
+        { label: 'At Risk', value: riskCounts.atRisk, icon: 'alert-triangle', color: 'bg-red-100 dark:bg-red-900/20' },
+        { label: 'Low Risk', value: riskCounts.lowRisk, icon: 'shield', color: 'bg-yellow-100 dark:bg-yellow-900/20' },
+        { label: 'Inconsistent Performer', value: riskCounts.inconsistentPerformer, icon: 'activity', color: 'bg-purple-100 dark:bg-purple-900/20' },
+        { label: 'Chronic Procrastinator', value: riskCounts.chronicProcrastinator, icon: 'clock', color: 'bg-yellow-50 dark:bg-yellow-800/20' },
+        { label: 'Incomplete Work', value: riskCounts.incompleteWork, icon: 'file-x', color: 'bg-pink-100 dark:bg-pink-900/20' },
+        { label: 'Average Grade', value: safeData.avgGrade ? safeData.avgGrade.toFixed(1) + '%': 'N/A', icon: 'bar-chart-2', color: 'bg-blue-100 dark:bg-blue-900/20' },
+        { label: 'Avg. ML Risk', value: safeData.avgRisk ? safeData.avgRisk.toFixed(1) + '%' : 'N/A', icon: 'activity', color: 'bg-purple-100 dark:bg-purple-900/20' },
+        { label: 'Avg. Late %', value: safeData.avgLate ? safeData.avgLate.toFixed(1) + '%' : 'N/A', icon: 'clock', color: 'bg-yellow-50 dark:bg-yellow-800/20' },
+        { label: 'Avg. Missed %', value: safeData.avgMissed ? safeData.avgMissed.toFixed(1) + '%' : 'N/A', icon: 'slash', color: 'bg-red-50 dark:bg-red-800/20' },
+      ];
+      document.getElementById('analyticsCards').innerHTML = cards.map(card => `
+        <div class="${card.color} rounded-lg p-3 sm:p-4 flex items-center gap-2 sm:gap-3 shadow-sm">
+          <div class="flex-shrink-0"><i data-lucide="${card.icon}" class="w-5 h-5 sm:w-6 sm:h-6"></i></div>
+          <div class="min-w-0 flex-1">
+            <div class="text-lg sm:text-xl font-bold truncate">${card.value}</div>
+            <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-300 truncate">${card.label}</div>
+          </div>
+        </div>
+      `).join('');
+      if (window.lucide) window.lucide.createIcons();
+      // Chart
+      var ctx = document.getElementById('performanceChart').getContext('2d');
+      if (chartInstance) chartInstance.destroy();
+      chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: [
+            'Safe',
+            'At Risk',
+            'Low Risk',
+            'Inconsistent Performer',
+            'Chronic Procrastinator',
+            'Incomplete Work',
+          ],
+          datasets: [{
+            label: 'Number of Students',
+            data: [
+              riskCounts.safe,
+              riskCounts.atRisk,
+              riskCounts.lowRisk,
+              riskCounts.inconsistentPerformer,
+              riskCounts.chronicProcrastinator,
+              riskCounts.incompleteWork,
+            ],
+            backgroundColor: [
+              '#22c55e', // Safe
+              '#ef4444', // At Risk
+              '#fbbf24', // Low Risk
+              '#a78bfa', // Inconsistent Performer
+              '#facc15', // Chronic Procrastinator
+              '#fb7185', // Incomplete Work
+            ],
+            borderRadius: 4,
+            borderSkipped: false,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return context.parsed.y + ' students';
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Number of Students',
+                font: { size: 14, weight: 'bold' }
+              },
+              ticks: { stepSize: 1, font: { size: 12 } }
+            },
+            x: {
+              title: {
+                display: true,
+                text: 'Risk Type',
+                font: { size: 14, weight: 'bold' }
+              },
+              ticks: { font: { size: 12 } }
+            }
+          }
+        }
+      });
+      window.analyticsChartInstance = chartInstance;
+      document.getElementById('analyticsSummary').innerHTML =
+        `<div class="text-sm sm:text-base">
+          <b>Total Students:</b> ${safeData.total} &nbsp;|&nbsp;
+          <span style='color:#22c55e'>Safe:</span> ${riskCounts.safe} &nbsp;|&nbsp;
+          <span style='color:#fbbf24'>Low Risk:</span> ${riskCounts.lowRisk} &nbsp;|&nbsp;
+          <span style='color:#ef4444'>High Risk:</span> ${riskCounts.atRisk}
+        </div>`;
+    })
+    .catch(error => {
+      console.error('Error fetching analytics:', error);
+      document.getElementById('analyticsCards').innerHTML = `
+        <div class="col-span-full text-center p-4">
+          <div class="text-red-600 dark:text-red-400 mb-2">
+            <i data-lucide="alert-circle" class="w-8 h-8 mx-auto"></i>
+          </div>
+          <p class="text-gray-600 dark:text-gray-400">Failed to load analytics data</p>
+          <p class="text-sm text-gray-500 dark:text-gray-500">${error.message}</p>
+        </div>
+      `;
+      if (window.lucide) window.lucide.createIcons();
+    });
+}
+function closeAnalyticsModal() {
+  document.getElementById('analyticsModal').classList.add('hidden');
+  document.body.style.overflow = 'auto';
+}
+</script>
+
 <script>
 // Set context variables from Blade
 const subjectId = @json($classSectionModel->subject->id);
@@ -848,17 +1354,18 @@ window.addEventListener('DOMContentLoaded', function() {
   // Initialize ML risk predictions
   initializeMLRiskPredictions();
   
-  // Check ML API health
-  checkMLHealth();
 });
 
 // ML Risk Prediction Functions
 function initializeMLRiskPredictions() {
   const riskIndicators = document.querySelectorAll('.ml-risk-indicator');
-  
-  riskIndicators.forEach(indicator => {
+  let delay = 0;
+  riskIndicators.forEach((indicator, idx) => {
     const studentData = JSON.parse(indicator.getAttribute('data-student-data'));
-    loadRiskPrediction(indicator, studentData);
+    setTimeout(() => {
+      loadRiskPrediction(indicator, studentData);
+    }, delay);
+    delay += 100; // 100ms between each call, adjust as needed
   });
 }
 
@@ -885,21 +1392,42 @@ function loadRiskPrediction(indicator, studentData) {
   .then(response => response.json())
   .then(data => {
     loadingDiv.classList.add('hidden');
-    
+    const studentId = indicator.getAttribute('data-student-id');
+    const nameCell = document.querySelector(`.student-name-cell[data-student-id="${studentId}"]`);
     if (data.success && data.has_risks) {
       displayDiv.classList.remove('hidden');
       renderRiskBadges(badgesDiv, data.risks);
+      // Color logic
+      const hasAtRisk = data.risks.some(risk => risk.code === 'risk_at_risk');
+      if (hasAtRisk) {
+        nameCell.classList.remove('text-green-600', 'text-orange-500');
+        nameCell.classList.add('text-red-600');
+      } else {
+        nameCell.classList.remove('text-red-600', 'text-green-600');
+        nameCell.classList.add('text-orange-500');
+      }
     } else if (data.success && !data.has_risks) {
       displayDiv.classList.remove('hidden');
       badgesDiv.innerHTML = '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Safe</span>';
+      // Safe: green
+      nameCell.classList.remove('text-red-600', 'text-orange-500');
+      nameCell.classList.add('text-green-600');
     } else {
       errorDiv.classList.remove('hidden');
+      // Optionally, remove color if error
+      nameCell.classList.remove('text-red-600', 'text-orange-500', 'text-green-600');
     }
   })
   .catch(error => {
     console.error('ML Prediction error:', error);
     loadingDiv.classList.add('hidden');
     errorDiv.classList.remove('hidden');
+    // Optionally, remove color if error
+    const studentId = indicator.getAttribute('data-student-id');
+    const nameCell = document.querySelector(`.student-name-cell[data-student-id="${studentId}"]`);
+    if (nameCell) {
+      nameCell.classList.remove('text-red-600', 'text-orange-500', 'text-green-600');
+    }
   });
 }
 
@@ -954,36 +1482,6 @@ function renderRiskBadges(badgesDiv, risks) {
 
   badgesDiv.innerHTML = html;
   lucide.createIcons();
-}
-
-// ML Health Check Function
-function checkMLHealth() {
-  const healthIndicator = document.getElementById('mlHealthIndicator');
-  const loadingDiv = healthIndicator.querySelector('.ml-loading');
-  const healthyDiv = healthIndicator.querySelector('.ml-healthy');
-  const unhealthyDiv = healthIndicator.querySelector('.ml-unhealthy');
-
-  // Show loading
-  loadingDiv.classList.remove('hidden');
-  healthyDiv.classList.add('hidden');
-  unhealthyDiv.classList.add('hidden');
-
-  fetch('/api/ml/health')
-    .then(response => response.json())
-    .then(data => {
-      loadingDiv.classList.add('hidden');
-      
-      if (data.success && data.status === 'healthy') {
-        healthyDiv.classList.remove('hidden');
-      } else {
-        unhealthyDiv.classList.remove('hidden');
-      }
-    })
-    .catch(error => {
-      console.error('ML Health check failed:', error);
-      loadingDiv.classList.add('hidden');
-      unhealthyDiv.classList.remove('hidden');
-    });
 }
 
 // ML Debug Functions
@@ -1128,5 +1626,417 @@ function fetchMetricsBreakdown(studentId) {
       document.getElementById('debugMetricsBreakdown').textContent = `Error fetching metrics: ${error.message}`;
     });
 }
+
+// Edit Subject Modal Variables
+let editCurrentStep = 1;
+let editAssessmentTypeCounter = { midterm: 0, final: 0 };
+let editAssessmentTypes = { midterm: [], final: [] };
+const editColors = ['blue', 'green', 'purple', 'orange', 'pink', 'indigo', 'teal', 'red'];
+
+// Edit Subject Modal Functions
+function openEditSubjectModal() {
+  // Get subject data from the current page context
+  const subjectCode = @json($classSectionModel->subject->code);
+  const subjectTitle = @json($classSectionModel->subject->title);
+  const subjectUnits = @json($classSectionModel->subject->units);
+  const subjectId = @json($classSectionModel->subject->id);
+  
+  // Fill the edit form
+  document.getElementById('edit_code').value = subjectCode;
+  document.getElementById('edit_title').value = subjectTitle;
+  document.getElementById('edit_units').value = subjectUnits;
+  
+  // Reset to step 1
+  editCurrentStep = 1;
+  editUpdateProgress();
+  document.getElementById('editStep1').classList.remove('hidden');
+  document.getElementById('editStep2').classList.add('hidden');
+  
+  // Reset assessment types
+  editAssessmentTypes = { midterm: [], final: [] };
+  editAssessmentTypeCounter = { midterm: 0, final: 0 };
+  
+  // Clear existing assessment types
+  document.getElementById('editMidtermAssessmentTypes').innerHTML = '';
+  document.getElementById('editFinalAssessmentTypes').innerHTML = '';
+  
+  // Load existing subject data
+  editLoadSubjectData(subjectId);
+  
+  // Show modal
+  const modal = document.getElementById('editSubjectModal');
+  modal.classList.add('show');
+  
+  // Focus on first input
+  setTimeout(() => document.getElementById('edit_code').focus(), 100);
+}
+
+function closeEditSubjectModal() {
+  const modal = document.getElementById('editSubjectModal');
+  modal.classList.remove('show');
+  document.body.style.overflow = 'auto';
+}
+
+function editUpdateProgress() {
+  document.getElementById('editCurrentStep').textContent = editCurrentStep;
+  document.getElementById('editStepTitle').textContent = editCurrentStep === 1 ? 'Basic Information' : 'Assessment Builder';
+  document.getElementById('editProgressBar').style.width = editCurrentStep === 1 ? '50%' : '100%';
+}
+
+function editNextStep() {
+  if (editCurrentStep < 2) {
+    editCurrentStep++;
+    editUpdateProgress();
+    document.getElementById('editStep1').classList.add('hidden');
+    document.getElementById('editStep2').classList.remove('hidden');
+  }
+}
+
+function editPrevStep() {
+  if (editCurrentStep > 1) {
+    editCurrentStep--;
+    editUpdateProgress();
+    document.getElementById('editStep2').classList.add('hidden');
+    document.getElementById('editStep1').classList.remove('hidden');
+  }
+}
+
+// Load existing subject data
+async function editLoadSubjectData(subjectId) {
+  try {
+    const response = await fetch(`/subjects/${subjectId}/edit-data`);
+    if (response.ok) {
+      const data = await response.json();
+      
+      // Set grading structure
+      if (data.grading_structure) {
+        const gradingType = data.grading_structure.type;
+        document.querySelector(`input[name="edit_grading_type"][value="${gradingType}"]`).checked = true;
+        
+        if (gradingType === 'custom') {
+          document.getElementById('editCustomWeights').classList.remove('hidden');
+          document.getElementById('edit_midterm_weight').value = data.grading_structure.midterm_weight;
+          document.getElementById('edit_final_weight').value = data.grading_structure.final_weight;
+        }
+      }
+      
+      // Load assessment types
+      if (data.assessment_types) {
+        editAssessmentTypes = { midterm: [], final: [] };
+        editAssessmentTypeCounter = { midterm: 0, final: 0 };
+        
+        // Clear existing
+        document.getElementById('editMidtermAssessmentTypes').innerHTML = '';
+        document.getElementById('editFinalAssessmentTypes').innerHTML = '';
+        
+        // Load midterm assessment types
+        if (data.assessment_types.midterm) {
+          data.assessment_types.midterm.forEach(type => {
+            editAddAssessmentType('midterm', type);
+          });
+        }
+        
+        // Load final assessment types
+        if (data.assessment_types.final) {
+          data.assessment_types.final.forEach(type => {
+            editAddAssessmentType('final', type);
+          });
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error loading subject data:', error);
+  }
+}
+
+function editAddAssessmentType(term, existingData = null) {
+  const counter = ++editAssessmentTypeCounter[term];
+  const typeId = `${term}_${counter}`;
+  const colorIndex = (counter - 1) % editColors.length;
+  const color = editColors[colorIndex];
+  
+  const assessmentType = {
+    id: existingData ? existingData.id : typeId,
+    name: existingData ? existingData.name : '',
+    weight: existingData ? existingData.weight : 0,
+    order: existingData ? existingData.order : counter,
+    color: color
+  };
+  
+  editAssessmentTypes[term].push(assessmentType);
+  
+  const container = document.getElementById(`edit${term.charAt(0).toUpperCase() + term.slice(1)}AssessmentTypes`);
+  const typeElement = document.createElement('div');
+  typeElement.className = 'bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-4';
+  typeElement.innerHTML = `
+    <div class="flex items-center justify-between">
+      <div class="flex-1 mr-4">
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Assessment Type Name</label>
+        <input type="text" 
+               id="edit_name_${typeId}"
+               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white" 
+               placeholder="e.g., Quiz, Lab, Project"
+               value="${assessmentType.name}"
+               oninput="editUpdateAssessmentType('${term}', ${counter - 1}, 'name', this.value)">
+      </div>
+      <div class="w-24">
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Weight (%)</label>
+        <input type="number" 
+               id="edit_weight_${typeId}"
+               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white" 
+               min="0" max="100" step="1" value="${Math.round(parseFloat(assessmentType.weight) || 0)}"
+               oninput="editUpdateAssessmentType('${term}', ${counter - 1}, 'weight', this.value)"
+               onkeypress="return event.charCode >= 48 && event.charCode <= 57">
+      </div>
+      <button type="button" onclick="editRemoveAssessmentType('${term}', ${counter - 1})" class="ml-2 text-red-600 hover:text-red-700 p-2 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+        <i data-lucide="trash-2" class="w-4 h-4"></i>
+      </button>
+    </div>
+  `;
+  
+  container.appendChild(typeElement);
+  lucide.createIcons();
+  editUpdateProgressBars();
+}
+
+function editRemoveAssessmentType(term, index) {
+  editAssessmentTypes[term].splice(index, 1);
+  editAssessmentTypeCounter[term]--;
+  editRenderAssessmentTypes(term);
+  editUpdateProgressBars();
+}
+
+function editUpdateAssessmentType(term, index, field, value) {
+  editAssessmentTypes[term][index][field] = value;
+  editUpdateProgressBars();
+}
+
+function editRenderAssessmentTypes(term) {
+  const container = document.getElementById(`edit${term.charAt(0).toUpperCase() + term.slice(1)}AssessmentTypes`);
+  container.innerHTML = '';
+  
+  editAssessmentTypes[term].forEach((type, index) => {
+    const counter = index + 1;
+    const typeId = `${term}_${counter}`;
+    
+    const typeElement = document.createElement('div');
+    typeElement.className = 'bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-4';
+    typeElement.innerHTML = `
+      <div class="flex items-center justify-between">
+        <div class="flex-1 mr-4">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Assessment Type Name</label>
+          <input type="text" 
+                 id="edit_name_${typeId}"
+                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white" 
+                 placeholder="e.g., Quiz, Lab, Project"
+                 value="${type.name}"
+                 oninput="editUpdateAssessmentType('${term}', ${index}, 'name', this.value)">
+        </div>
+        <div class="w-24">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Weight (%)</label>
+          <input type="number" 
+                 id="edit_weight_${typeId}"
+                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white" 
+                 min="0" max="100" step="1" value="${Math.round(parseFloat(type.weight) || 0)}"
+                 oninput="editUpdateAssessmentType('${term}', ${index}, 'weight', this.value)"
+                 onkeypress="return event.charCode >= 48 && event.charCode <= 57">
+        </div>
+        <button type="button" onclick="editRemoveAssessmentType('${term}', ${index})" class="ml-2 text-red-600 hover:text-red-700 p-2 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
+        </button>
+      </div>
+    `;
+    
+    container.appendChild(typeElement);
+  });
+  
+  lucide.createIcons();
+}
+
+function editUpdateProgressBars() {
+  // Update midterm progress bar
+  const midtermTotal = editAssessmentTypes.midterm.reduce((sum, type) => sum + parseFloat(type.weight || 0), 0);
+  document.getElementById('editMidtermTotalWeight').textContent = `${Math.round(midtermTotal)}%`;
+  editRenderProgressBar('editMidtermProgressContainer', editAssessmentTypes.midterm, 'editMidtermOutput', 'editMidtermError');
+  
+  // Update final progress bar
+  const finalTotal = editAssessmentTypes.final.reduce((sum, type) => sum + parseFloat(type.weight || 0), 0);
+  document.getElementById('editFinalTotalWeight').textContent = `${Math.round(finalTotal)}%`;
+  editRenderProgressBar('editFinalProgressContainer', editAssessmentTypes.final, 'editFinalOutput', 'editFinalError');
+}
+
+function editRenderProgressBar(containerId, assessmentTypes, outputId, errorId) {
+  const container = document.getElementById(containerId);
+  const output = document.getElementById(outputId);
+  const error = document.getElementById(errorId);
+  
+  container.innerHTML = '';
+  output.textContent = '';
+  error.textContent = '';
+  
+  const total = assessmentTypes.reduce((sum, type) => sum + parseFloat(type.weight || 0), 0);
+  
+  if (total > 100) {
+    error.innerHTML = '<span class="text-red-600 font-medium">Total weight exceeds 100%</span>';
+    return;
+  }
+  
+  if (total < 100) {
+    error.innerHTML = '<span class="text-yellow-600 font-medium">Total weight is less than 100%</span>';
+  }
+  
+  let currentPosition = 0;
+  assessmentTypes.forEach((type, index) => {
+    const width = (parseFloat(type.weight || 0) / 100) * 100;
+    const colorIndex = index % editColors.length;
+    const color = editColors[colorIndex];
+    
+    const segment = document.createElement('div');
+    segment.className = `segment assessment-${color}`;
+    segment.style.left = `${currentPosition}%`;
+    segment.style.width = `${width}%`;
+    
+    container.appendChild(segment);
+    
+    currentPosition += width;
+  });
+  
+  output.textContent = assessmentTypes.map(type => `${type.name}: ${type.weight}%`).join(' | ');
+}
+
+function editSaveSubject() {
+  // Validate weights
+  const midtermTotal = editAssessmentTypes.midterm.reduce((sum, type) => sum + parseFloat(type.weight || 0), 0);
+  const finalTotal = editAssessmentTypes.final.reduce((sum, type) => sum + parseFloat(type.weight || 0), 0);
+  
+  if (Math.round(midtermTotal) !== 100) {
+    alert(`Midterm total must equal 100%. Current total: ${Math.round(midtermTotal)}%`);
+    return;
+  }
+  
+  if (Math.round(finalTotal) !== 100) {
+    alert(`Final total must equal 100%. Current total: ${Math.round(finalTotal)}%`);
+    return;
+  }
+  
+  // Create form dynamically
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = `/subjects/${@json($classSectionModel->subject->id)}`;
+  form.style.display = 'none';
+  
+  // Add CSRF token
+  const csrfToken = document.createElement('input');
+  csrfToken.type = 'hidden';
+  csrfToken.name = '_token';
+  csrfToken.value = '{{ csrf_token() }}';
+  form.appendChild(csrfToken);
+  
+  // Add method override
+  const methodOverride = document.createElement('input');
+  methodOverride.type = 'hidden';
+  methodOverride.name = '_method';
+  methodOverride.value = 'PUT';
+  form.appendChild(methodOverride);
+  
+  // Add form data
+  const formData = {
+    'code': document.getElementById('edit_code').value,
+    'title': document.getElementById('edit_title').value,
+    'units': document.getElementById('edit_units').value,
+    'grading_type': document.querySelector('input[name="edit_grading_type"]:checked').value,
+    'midterm_weight': document.querySelector('input[name="edit_grading_type"]:checked').value === 'custom' ? document.getElementById('edit_midterm_weight').value : 50,
+    'final_weight': document.querySelector('input[name="edit_grading_type"]:checked').value === 'custom' ? document.getElementById('edit_final_weight').value : 50,
+    'assessment_types': JSON.stringify(editAssessmentTypes)
+  };
+  
+  // Add each form field
+  Object.keys(formData).forEach(key => {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = key;
+    input.value = formData[key];
+    form.appendChild(input);
+  });
+  
+  // Submit form
+  document.body.appendChild(form);
+  form.submit();
+}
+
+// Grading type change handler
+document.addEventListener('DOMContentLoaded', function() {
+  const gradingTypeRadios = document.querySelectorAll('input[name="edit_grading_type"]');
+  gradingTypeRadios.forEach(radio => {
+    radio.addEventListener('change', function() {
+      const customWeights = document.getElementById('editCustomWeights');
+      if (this.value === 'custom') {
+        customWeights.classList.remove('hidden');
+      } else {
+        customWeights.classList.add('hidden');
+      }
+    });
+  });
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // --- FILTER ---
+  const riskFilter = document.getElementById('riskFilter');
+  if (riskFilter) {
+    riskFilter.addEventListener('change', function() {
+      const value = this.value;
+      document.querySelectorAll('#studentsTable tbody tr').forEach(row => {
+        let riskCell = row.querySelector('.ml-risk-indicator .risk-badges');
+        let riskText = riskCell ? riskCell.textContent.toLowerCase() : '';
+        if (value === 'all') {
+          row.style.display = '';
+        } else if (value === 'high') {
+          row.style.display = riskText.includes('at risk') ? '' : 'none';
+        } else if (value === 'low') {
+          row.style.display = riskText.includes('low risk') ? '' : 'none';
+        } else if (value === 'safe') {
+          row.style.display = (riskText.includes('safe') || riskText.includes('not at risk')) ? '' : 'none';
+        }
+      });
+    });
+  }
+  // --- SORT ---
+  let sortDirection = { name: 1, grade: 1, risk: 1 };
+  document.querySelectorAll('.sort-header').forEach(header => {
+    header.addEventListener('click', function() {
+      const sortKey = this.getAttribute('data-sort');
+      const tbody = document.querySelector('#studentsTable tbody');
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      rows.sort((a, b) => {
+        if (sortKey === 'name') {
+          const nameA = a.querySelector('.student-name-cell').textContent.trim().toLowerCase();
+          const nameB = b.querySelector('.student-name-cell').textContent.trim().toLowerCase();
+          return nameA.localeCompare(nameB) * sortDirection.name;
+        } else if (sortKey === 'grade') {
+          // Use overall grade if available, else 0
+          const gradeA = parseFloat((a.querySelector('.flex .text-green-600, .flex .text-green-400')||{}).textContent)||0;
+          const gradeB = parseFloat((b.querySelector('.flex .text-green-600, .flex .text-green-400')||{}).textContent)||0;
+          return (gradeA - gradeB) * sortDirection.grade;
+        } else if (sortKey === 'risk') {
+          // High risk = 2, low risk = 1, safe = 0
+          function riskScore(row) {
+            let riskCell = row.querySelector('.ml-risk-indicator .risk-badges');
+            let riskText = riskCell ? riskCell.textContent.toLowerCase() : '';
+            if (riskText.includes('at risk')) return 2;
+            if (riskText.includes('low risk')) return 1;
+            return 0;
+          }
+          return (riskScore(a) - riskScore(b)) * sortDirection.risk;
+        }
+        return 0;
+      });
+      // Toggle direction
+      sortDirection[sortKey] *= -1;
+      // Re-append rows
+      rows.forEach(row => tbody.appendChild(row));
+    });
+  });
+});
 </script>
 @endsection 
