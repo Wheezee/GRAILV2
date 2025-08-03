@@ -316,7 +316,9 @@
         <div class="group cursor-pointer w-full" onclick="window.location.href='{{ route('assessments.index', ['subject' => $classSectionModel->subject->id, 'classSection' => $classSectionModel->id, 'term' => $term, 'assessmentType' => $assessmentType->id]) }}'">
           <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 sm:p-6 shadow-sm hover:shadow-lg hover:scale-105 transition-all duration-200 w-full h-full">
             <div class="text-center">
-              <div class="text-2xl sm:text-3xl mb-2 sm:mb-3" style="color: {{ $color }}">📊</div>
+              <div class="flex justify-center items-center mb-2 sm:mb-3" style="color: {{ $color }}">
+                <i data-lucide="bar-chart-2" class="w-8 h-8"></i>
+              </div>
               <h4 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1 sm:mb-2 line-clamp-2">{{ $assessmentType->name }}</h4>
               <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Weight: {{ $assessmentType->weight }}%</p>
               <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">No. of Items: {{ $assessmentType->assessments()->where('term', $term)->count() }}</p>

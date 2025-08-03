@@ -47,25 +47,23 @@
       @endif
     </p>
   </div>
-  <div class="flex items-center gap-4">
-    <div class="flex items-center gap-2">
-      <label for="grading_mode" class="text-sm font-medium text-gray-700 dark:text-gray-300">Grading Mode:</label>
-      <select id="grading_mode" class="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-red-500 focus:border-red-500">
+  <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4 w-full">
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+      <label for="grading_mode" class="text-sm font-medium text-gray-700 dark:text-gray-300 sm:mr-2">Grading Mode:</label>
+      <select id="grading_mode" class="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-red-500 focus:border-red-500 w-full sm:w-auto">
         <option value="percentage">Percentage-Based</option>
         <option value="computed">Computed (1.0–5.0)</option>
         <option value="rule_based">Rule-Based (1.0–5.0)</option>
       </select>
     </div>
-    
-    <div class="w-px h-6 bg-gray-300 dark:bg-gray-600"></div>
-    
-    <a href="{{ route('grading.system', ['subject' => $classSection->subject->id, 'classSection' => $classSection->id, 'term' => 'midterm']) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors">
+    <div class="hidden sm:block w-px h-6 bg-gray-300 dark:bg-gray-600"></div>
+    <a href="{{ route('grading.system', ['subject' => $classSection->subject->id, 'classSection' => $classSection->id, 'term' => 'midterm']) }}"
+       class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors w-full sm:w-auto justify-center">
       <i data-lucide="arrow-left" class="w-4 h-4"></i>
       Back to Grading
     </a>
-    <!-- Export Button -->
     <button
-      class="inline-flex items-center gap-2 px-4 py-2 bg-red-500 text-white font-medium rounded-lg transition-colors hover:bg-red-600"
+      class="inline-flex items-center gap-2 px-4 py-2 bg-red-500 text-white font-medium rounded-lg transition-colors hover:bg-red-600 w-full sm:w-auto justify-center"
       onclick="document.getElementById('exportModal').classList.remove('hidden')"
     >
       <i data-lucide="download" class="w-4 h-4"></i>

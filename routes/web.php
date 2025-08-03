@@ -131,7 +131,8 @@ Route::get('/dashboard', function () {
             'assessmentTypeStats',
             'totalAssessments',
             'latestTypeStats',
-            'latestAssessments'
+            'latestAssessments',
+            'user' // Add this line
         ));
     }
     return view('dashboard');

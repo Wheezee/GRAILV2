@@ -3,7 +3,7 @@
 @section('content')
 <div class="mb-8">
   <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Dashboard</h2>
-  <p class="text-gray-600 dark:text-gray-400 mb-6">Welcome back!</p>
+  <p class="text-gray-600 dark:text-gray-400 mb-6">Welcome {{ $user->name }}!</p>
 
   <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
     <!-- Subjects Count -->
