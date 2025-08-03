@@ -65,7 +65,7 @@
 </div>
 <!-- Class Selector Modal for Assessments -->
 <div id="assessmentClassSelectorModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
-  <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+  <div class="relative mx-2 sm:mx-auto p-2 sm:p-5 border w-full max-w-xs sm:max-w-md shadow-lg rounded-md bg-white dark:bg-gray-800 max-h-[90vh] flex flex-col overflow-y-auto top-20">
     <div class="mt-3">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100" id="assessmentModalTitle">Select Class Section</h3>

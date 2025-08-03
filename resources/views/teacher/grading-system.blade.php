@@ -206,7 +206,7 @@
     </li>
     <li class="flex items-center">
       <i data-lucide="chevron-right" class="w-3 h-3 sm:w-4 sm:h-4 mx-1 sm:mx-2 flex-shrink-0"></i>
-      <a href="{{ route('subjects.classes', $classSectionModel->subject->id) }}" class="hover:text-red-600 dark:hover:text-red-400 max-w-[120px] sm:max-w-none truncate">
+      <a href="{{ route('subjects.classes', $classSectionModel->subject->id) }}" class="hover:text-red-600 dark:hover:text-red-400 transition-colors whitespace-nowrap">
         {{ $classSectionModel->subject->code }} - {{ $classSectionModel->subject->title }}
       </a>
     </li>
@@ -281,16 +281,16 @@
     <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ $classSectionModel->section }}</h2>
     <p class="text-gray-600 dark:text-gray-400 mt-1">{{ $classSectionModel->subject->code }} - {{ $classSectionModel->subject->title }}</p>
   </div>
-  <div class="flex gap-2">
-    <button onclick="openEditSubjectModal()" class="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow transition-transform transform hover:scale-105 focus:outline-none">
+  <div class="flex flex-col gap-2 w-full sm:flex-row sm:w-auto">
+    <button onclick="openEditSubjectModal()" class="w-full sm:w-auto inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow transition-transform transform hover:scale-105 focus:outline-none">
       <i data-lucide="edit" class="w-5 h-5"></i>
       Edit Subject
     </button>
-    <a href="{{ route('batch-enrollment.form', ['subject' => $classSectionModel->subject->id, 'classSection' => $classSectionModel->id]) }}" class="inline-flex items-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow transition-transform transform hover:scale-105 focus:outline-none">
+    <a href="{{ route('batch-enrollment.form', ['subject' => $classSectionModel->subject->id, 'classSection' => $classSectionModel->id]) }}" class="w-full sm:w-auto inline-flex items-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow transition-transform transform hover:scale-105 focus:outline-none">
       <i data-lucide="upload" class="w-5 h-5"></i>
       Batch Enroll
     </a>
-    <a href="{{ route('gradebook.all', ['subject' => $classSectionModel->subject->id, 'classSection' => $classSectionModel->id]) }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg shadow transition-transform transform hover:scale-105 focus:outline-none">
+    <a href="{{ route('gradebook.all', ['subject' => $classSectionModel->subject->id, 'classSection' => $classSectionModel->id]) }}" class="w-full sm:w-auto inline-flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg shadow transition-transform transform hover:scale-105 focus:outline-none">
       <i data-lucide="clipboard-list" class="w-5 h-5"></i>
       Gradebook (All)
     </a>
@@ -362,7 +362,7 @@
 <div class="flex flex-wrap items-center justify-between mb-4 gap-2">
   <div>
     <label for="riskFilter" class="mr-2 font-medium text-sm">Filter by Risk:</label>
-    <select id="riskFilter" class="border rounded px-2 py-1 text-sm">
+    <select id="riskFilter" class="border rounded px-2 py-1 text-sm bg-white text-gray-900 dark:bg-gray-700 dark:text-gray-100">
       <option value="all">Show All</option>
       <option value="high">High Risk</option>
       <option value="low">Low Risk</option>
@@ -470,8 +470,8 @@
                    <a href="/subjects/{{ $classSectionModel->subject->id }}/classes/{{ $classSectionModel->id }}/students/{{ $student->id }}/analysis/{{ $term }}" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
                      <i data-lucide="bar-chart-2" class="w-4 h-4"></i>
                    </a>
-                   <a href="#" class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300">
-                     <i data-lucide="edit" class="w-4 h-4 edit-student-btn" data-student='{{ json_encode($student) }}'></i>
+                   <a href="#" class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 edit-student-btn" data-student='{{ json_encode($student) }}'>
+                     <i data-lucide="edit" class="w-4 h-4"></i>
                    </a>
                    <button type="button" onclick="if(confirm('Are you sure you want to unenroll {{ $student->first_name }} {{ $student->last_name }}? This action cannot be undone.')) { document.getElementById('unenroll-form-{{ $student->id }}').submit(); }" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
                      <i data-lucide="user-minus" class="w-4 h-4"></i>
